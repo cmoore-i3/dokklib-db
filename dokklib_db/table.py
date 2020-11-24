@@ -149,8 +149,11 @@ class Table:
         args = query_arg.get_kwargs(self.table_name, self.primary_index)
         with self._dispatch_error():
             query_res = self._client.query(**args)
-        items = query_res.get('Items', [])
-        return self._normalize_items(items)
+            all_items = query_res.get('Items', [])
+            while 'LastEvaluatedKey' in query_res:
+                query_res = self._client.query(ExclusiveStartKey=query_res['LastEvaluatedKey'], **args)
+                all_items.extend(query_res.get('Items', []))
+        return self._normalize_items(all_items)
 
     def _update_item(self, update_arg: UpdateArg) -> None:
         """Update an item or insert a new item if it doesn't exist.
